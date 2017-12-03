@@ -3,5 +3,6 @@ public class Test {
         String str = " \t\tq\tqsdf sdfsdf  dsf\t\tsadasd";
         String[] splited = str.split("[ \t]+");
         System.out.println(splited[2].length());
+        //test 
     }
 }
