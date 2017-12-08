@@ -8,13 +8,13 @@ public class LSP {
     
     public LSP(Router rt) {
         originRouter = rt.ID;
-        sequenceNumber = 1;
+        sequenceNumber = ++rt.sequenceNumber;
         TTL = 10;
     }
     
-    public LSP(Router rt, LSP lsp) {
-        originRouter = rt.ID;
-        sequenceNumber = lsp.sequenceNumber + 1;
+    public LSP(LSP lsp) {
+        originRouter = lsp.originRouter;
+        sequenceNumber = lsp.sequenceNumber;
         TTL = lsp.TTL - 1;
     }
 }
