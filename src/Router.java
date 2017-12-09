@@ -108,7 +108,7 @@ public class Router {
                 Set<Integer> tempAdj = new HashSet<>(rt.adjacentRouters.get(rt.ID).keySet());
                 for (int adj : tempAdj) {
                     if (tick - rt.lastTickVal.get(adj) >= 2) {
-                        System.out.println(rt.ID + " has disconnected " + adj);
+                        //System.out.println(rt.ID + " has disconnected " + adj);
                         rt.offRouters.add(allRouters.get(adj));
                         rt.dijkstra();
                         //todo:check if this removal is correct, regarding ticking
@@ -128,11 +128,11 @@ public class Router {
         if (!this.isOn) {
             System.out.println("This router is shut down");
         }
-        
         System.out.println("Network\t\t\tOutgoing\tCost\t\t");
         System.out.println("--------------------------------");
         for (Triple tri : this.routingTable.values()) {
-            System.out.println(tri.networkName + "\t\t" + tri.outgoing.ID + "\t\t\t" + tri.cost);
+            String cost = tri.cost < infinity ? String.valueOf(tri.cost) : "infinity";
+            System.out.println(tri.networkName + "\t\t" + tri.outgoing.ID + "\t\t\t" + cost);
         }
         System.out.println();
     }
@@ -232,6 +232,11 @@ public class Router {
         //Update
         boolean changed = false;
         
+        for (Router offRouter : lsp.offRouters) {
+            changed = true;
+            this.offRouters.add(offRouter);
+        }
+        
         if (this.offRouters.contains(allRouters.get(senderID))) {
             changed = true;
             this.offRouters.remove(allRouters.get(senderID));
@@ -240,6 +245,15 @@ public class Router {
             changed = true;
             this.offRouters.remove(allRouters.get(lsp.originRouter));
         }
+        
+        Set<Router> tempOffRouters = new HashSet<>(this.offRouters);
+        for (Router offRouter : tempOffRouters) {
+            if (this.adjacentRouters.get(lsp.originRouter).containsKey(offRouter.ID) && !lsp.offRouters.contains(offRouter)) {
+                changed = true;
+                this.offRouters.remove(offRouter);
+            }
+        }
+        
         //Merge the graph of the LSP with its own graph
         changed = changed || lsp.updateAdjacentList(this);
         

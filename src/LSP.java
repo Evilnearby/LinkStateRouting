@@ -20,6 +20,7 @@ public class LSP {
         sequenceNumber = lsp.sequenceNumber;
         TTL = lsp.TTL - 1;
         reachableRouters = lsp.reachableRouters;
+        this.offRouters = lsp.offRouters;
     }
     
     public boolean updateAdjacentList(Router receivingRouter) {
