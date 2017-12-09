@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="bc6cd1f0-49ec-41fb-9870-2783b809e8da" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/out/production/LinkStateRouting/Router.class" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/LSP.java" afterPath="$PROJECT_DIR$/src/LSP.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/Router.java" afterPath="$PROJECT_DIR$/src/Router.java" />
-    </list>
+    <list default="true" id="bc6cd1f0-49ec-41fb-9870-2783b809e8da" name="Default" comment="" />
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -19,8 +15,8 @@
       <file leaf-file-name="Router.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/Router.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="486">
-              <caret line="257" column="58" lean-forward="true" selection-start-line="257" selection-start-column="58" selection-end-line="257" selection-end-column="58" />
+            <state relative-caret-position="924">
+              <caret line="268" column="9" lean-forward="true" selection-start-line="268" selection-start-column="9" selection-end-line="268" selection-end-column="9" />
               <folding>
                 <element signature="imports" expanded="true" />
                 <element signature="class#Triple#0" expanded="false" />
@@ -623,8 +619,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/Router.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="486">
-          <caret line="257" column="58" lean-forward="true" selection-start-line="257" selection-start-column="58" selection-end-line="257" selection-end-column="58" />
+        <state relative-caret-position="924">
+          <caret line="268" column="9" lean-forward="true" selection-start-line="268" selection-start-column="9" selection-end-line="268" selection-end-column="9" />
           <folding>
             <element signature="imports" expanded="true" />
             <element signature="class#Triple#0" expanded="false" />
