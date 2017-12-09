@@ -19,25 +19,33 @@ public class Router {
     
     public int ID;
     public String networkName;  //The name of network, i.e., 192.168.0.1
-    public Map<Integer, Integer> adjacentRouters;    //Directly connected routers, along with the costs
+    //The graph this router understands, using adjacent list
+    //Key, Source, Value, the router&cost map from this source.
+    public Map<Integer, Map<Integer, Integer>> adjacentRouters;
     //Key: ID of directly connected routers, Value: last received tick value
     public Map<Integer, Integer> lastTickVal;
     public boolean isOn;
     //Routing table
+    public int sequenceNumber;
+    public Set<Router> offRouters;
     
     static int tick = 0;
     //Key:LSP's originate router, Value: LSP's sequenceNumber
     public Map<Integer, Integer> receivedLSPs;
+    //Key: Target router value: the triple value
     public Map<Router, Triple> routingTable;
     
     public Router(int ID, String networkName) {
         this.ID = ID;
         this.networkName = networkName;
         this.adjacentRouters = new HashMap<>();
-        this.lastTickVal = new HashMap();
+        this.adjacentRouters.put(this.ID, new HashMap<Integer, Integer>());
+        this.lastTickVal = new HashMap<>();
         this.receivedLSPs = new HashMap<>();
         this.routingTable = new HashMap<>();
         this.isOn = true;
+        this.sequenceNumber = 1;
+        this.offRouters = new HashSet<>();
     }
     
     public static void readInfile() throws IOException {
@@ -56,33 +64,35 @@ public class Router {
             else {
                 int cost = (words.length == 2 || words[2].length() == 0) ? 1 : Integer.valueOf(words[2]);
                 int neigh = Integer.valueOf(words[1]);
-                allRouters.get(currSource).adjacentRouters.put(neigh, cost);
+                //Initially, in each router's graph, there is only one entry which is its own network
+                Router currRouter = allRouters.get(currSource);
+                currRouter.adjacentRouters.get(currSource).put(neigh, cost);
+                currRouter.adjacentRouters.putIfAbsent(neigh, new HashMap<>());
+                currRouter.adjacentRouters.get(neigh).put(currSource, cost);
             }
         }
     }
     
     static void initializeRoutingTable() {
         for (Router r : allRouters.values()) {
-            for (Router object : allRouters.values()) {
+            for (int routerID : r.adjacentRouters.get(r.ID).keySet()) {
+                //Object is one of the router r's directly connected routers
+                Router object = allRouters.get(routerID);
                 if (r.equals(object)) {
                     continue;
                 }
-                Triple tri = new Triple(object.networkName, null, infinity);
+                Triple tri = new Triple(object.networkName, object, r.adjacentRouters.get(r.ID).get(object.ID));
                 r.routingTable.put(object, tri);
             }
-        }
-        
-        for (Router r : allRouters.values()) {
-            r.dijkstra();
         }
     }
     
     private static String promptUsers() {
         System.out.println("If you want to continue, enter \"C\"");
         System.out.println("If you want to quit, enter \"Q\"");
-        System.out.println("If you want to print routing table, enter \"P\" followed by the router's id number");
-        System.out.println("If you want to shut down a router, enter \"S\" followed by the router's id number");
-        System.out.println("If you want to start up a router, enter \"T\" followed by the router's id number");
+        System.out.println("If you want to print routing table, enter \"P\" followed by the router's id number, without space");
+        System.out.println("If you want to shut down a router, enter \"S\" followed by the router's id number, without space");
+        System.out.println("If you want to start up a router, enter \"T\" followed by the router's id number, without space");
         Scanner sc = new Scanner(System.in);
         String res = sc.nextLine();
         return res;
@@ -91,26 +101,26 @@ public class Router {
     private static void continueRouting() {
         tick++;
         if (tick > 1) {
-            boolean changed = false;
             for (Router rt : allRouters.values()) {
-                Set<Integer> tempAdj = new HashSet<>(rt.adjacentRouters.keySet());
-                for (int adj : tempAdj) {
-                    if (!rt.lastTickVal.containsKey(adj) || tick - rt.lastTickVal.get(adj) >= 2) {
-                        System.out.println(adj);
-                        rt.adjacentRouters.remove(adj);
-                        changed = true;
-                    }
+                if (!rt.isOn) {
+                    continue;
                 }
-            }
-            if (changed) {
-                for (Router rt : allRouters.values()) {
-                    rt.dijkstra();
+                Set<Integer> tempAdj = new HashSet<>(rt.adjacentRouters.get(rt.ID).keySet());
+                for (int adj : tempAdj) {
+                    if (tick - rt.lastTickVal.get(adj) >= 2) {
+                        System.out.println(rt.ID + " has disconnected " + adj);
+                        rt.offRouters.add(allRouters.get(adj));
+                        rt.dijkstra();
+                        //todo:check if this removal is correct, regarding ticking
+                    }
                 }
             }
         }
         
         for (Router r : allRouters.values()) {
-            r.originatePacket();
+            if (r.isOn) {
+                r.originatePacket();
+            }
         }
     }
     
@@ -118,14 +128,21 @@ public class Router {
         if (!this.isOn) {
             System.out.println("This router is shut down");
         }
+        
+        System.out.println("Network\t\t\tOutgoing\tCost\t\t");
+        System.out.println("--------------------------------");
         for (Triple tri : this.routingTable.values()) {
-            System.out.println(tri.networkName + ", " + tri.outgoing.ID + ", " + tri.cost);
+            System.out.println(tri.networkName + "\t\t" + tri.outgoing.ID + "\t\t\t" + tri.cost);
         }
+        System.out.println();
     }
     
     //Dijkstra to update this router's routing table
     private void dijkstra() {
-        Set<Router> V_S = new HashSet<>(allRouters.values());
+        Set<Router> V_S = new HashSet<>();
+        for (int rt : this.adjacentRouters.keySet()) {
+            V_S.add(allRouters.get(rt));
+        }
         Set<Router> S = new HashSet<>();
         Map<Router, Integer> D = new HashMap<>();  //D stores current minimum cost
         Map<Router, Router> outgoings = new HashMap<>();
@@ -138,7 +155,7 @@ public class Router {
         }
         
         for (Router r : V_S) {
-            D.put(r, this.getCost(r.ID));
+            D.put(r, this.getCost(r.ID, this));
         }
         
         while (!V_S.isEmpty()) {
@@ -151,9 +168,9 @@ public class Router {
             
             for (Router r : V_S) {
                 //If a detour is less cost
-                boolean shortcut = D.get(r) > (D.get(min) + min.getCost(r.ID));
+                boolean shortcut = D.get(r) > (D.get(min) + min.getCost(r.ID, this));
                 //Update the distance from source to r
-                D.put(r, Math.min(D.get(r), D.get(min) + min.getCost(r.ID)));
+                D.put(r, Math.min(D.get(r), D.get(min) + min.getCost(r.ID, this)));
                 if (shortcut) {
                     //If there is a shortcut by detour, then we should allocate this router's outgoing to min's outgoing
                     outgoings.put(r, outgoings.get(min));
@@ -161,22 +178,29 @@ public class Router {
             }
         }
         
+        S.remove(this);
+        
         for (Router target : S) {
-            if (target == this) {
-                continue;
+            if (this.routingTable.containsKey(target)) {
+                this.routingTable.get(target).outgoing = outgoings.get(target);
+                this.routingTable.get(target).cost = D.get(target);
+            } else {
+                Triple triple = new Triple(target.networkName, outgoings.get(target), D.get(target));
+                this.routingTable.put(target, triple);
             }
-            this.routingTable.get(target).outgoing = outgoings.get(target);
-            this.routingTable.get(target).cost = D.get(target);
         }
     }
     
     //Get cost from this router to the neighbor router
-    private int getCost(int neigh) {
-        if (this.ID == neigh) {
+    private int getCost(int target, Router source) {
+        if (this.ID == target) {
             return 0;
         }
-        if (this.adjacentRouters.containsKey(neigh)) {
-            return this.adjacentRouters.get(neigh);
+        if (source.offRouters.contains(allRouters.get(target))) {
+            return infinity;
+        }
+        if (this.adjacentRouters.get(this.ID).containsKey(target)) {
+            return this.adjacentRouters.get(this.ID).get(target);
         }
         return infinity;
     }
@@ -187,26 +211,52 @@ public class Router {
     
     private static void startUp(int routerID) {
         allRouters.get(routerID).isOn = true;
+        Router thisRouter = allRouters.get(routerID);
+        for (int adj : thisRouter.adjacentRouters.get(thisRouter.ID).keySet()) {
+            Router adjRouter = allRouters.get(adj);
+            //Update the started up's tick vals
+            thisRouter.lastTickVal.put(adj, tick);
+            //Update the started up's neighbors' tick vals
+            adjRouter.lastTickVal.put(routerID, tick);
+        }
     }
     
-    public void receivePacket(LSP lsp, int senderID) {
-        receivedLSPs.put(lsp.originRouter, lsp.sequenceNumber);
-        LSP forwardedLSP = new LSP(lsp);
+    public void receivePacket(LSP receivedLsp, int senderID) {
+        LSP lsp = new LSP(receivedLsp);
         //Discard the LSP
-        if (forwardedLSP.TTL == 0 || (receivedLSPs.containsKey(senderID) && receivedLSPs.get(senderID) >= lsp.sequenceNumber)) {
+        if (lsp.TTL == 0 || (receivedLSPs.containsKey(senderID) && receivedLSPs.get(senderID) >= lsp.sequenceNumber)) {
+            //System.out.println("origin:" + lsp.originRouter + "ttl:" + lsp.TTL);
             return;
         }
+        receivedLSPs.put(lsp.originRouter, lsp.sequenceNumber);
+        //Update
+        boolean changed = false;
+        
+        if (this.offRouters.contains(allRouters.get(senderID))) {
+            changed = true;
+            this.offRouters.remove(allRouters.get(senderID));
+        }
+        if (this.offRouters.contains(allRouters.get(lsp.originRouter))) {
+            changed = true;
+            this.offRouters.remove(allRouters.get(lsp.originRouter));
+        }
+        //Merge the graph of the LSP with its own graph
+        changed = changed || lsp.updateAdjacentList(this);
+        
+        if (changed) {
+            this.dijkstra();
+        }
         //Forward the LSP
-        for (int adj : adjacentRouters.keySet()) {
+        for (int adj : this.adjacentRouters.get(this.ID).keySet()) {
             if (allRouters.get(adj).ID != senderID && allRouters.get(adj).isOn) {
                 allRouters.get(adj).lastTickVal.put(this.ID, tick); //update the last received tick value on the receiving router
-                allRouters.get(adj).receivePacket(forwardedLSP, this.ID);
+                allRouters.get(adj).receivePacket(lsp, this.ID);
             }
         }
     }
     
     public void originatePacket() {
-        for (int r : this.adjacentRouters.keySet()) {
+        for (int r : this.adjacentRouters.get(this.ID).keySet()) {
             if (allRouters.get(r).isOn) {
                 allRouters.get(r).lastTickVal.put(this.ID, tick); //update the last received tick value on the receiving router
                 allRouters.get(r).receivePacket(new LSP(this), this.ID);
@@ -218,10 +268,15 @@ public class Router {
         readInfile();
         initializeRoutingTable();
         String ans = "";
-        /*allRouters.get(0).printRoutingTable();
-        for (int r : allRouters.get(0).adjacentRouters.keySet()) {
+        /*continueRouting();
+        shutDown(5);
+        continueRouting();
+        continueRouting();
+        continueRouting();
+        allRouters.get(0).printRoutingTable();
+        for (int r : allRouters.get(0).adjacentRouters.get(0).keySet()) {
             System.out.println("router" + r);
-            System.out.println("cost" + allRouters.get(0).adjacentRouters.get(r));
+            System.out.println("cost" + allRouters.get(0).adjacentRouters.get(0).get(r));
         }*/
         while(true) {
             ans = promptUsers();
