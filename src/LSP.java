@@ -9,7 +9,7 @@ public class LSP {
     
     public LSP(Router rt) {
         originRouter = rt.ID;
-        sequenceNumber = ++rt.sequenceNumber;
+        sequenceNumber = rt.sequenceNumber;
         TTL = 10;
         reachableRouters = new HashMap<>(rt.adjacentRouters);
         this.offRouters = new HashSet<>(rt.offRouters);

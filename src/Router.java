@@ -223,8 +223,8 @@ public class Router {
     
     public void receivePacket(LSP receivedLsp, int senderID) {
         LSP lsp = new LSP(receivedLsp);
-        //Discard the LSP
-        if (lsp.TTL == 0 || (receivedLSPs.containsKey(senderID) && receivedLSPs.get(senderID) >= lsp.sequenceNumber)) {
+        //Discard the LSP ?????
+        if (lsp.TTL == 0 || (receivedLSPs.containsKey(lsp.originRouter) && receivedLSPs.get(lsp.originRouter) >= lsp.sequenceNumber) || lsp.originRouter == this.ID) {
             //System.out.println("origin:" + lsp.originRouter + "ttl:" + lsp.TTL);
             return;
         }
@@ -276,6 +276,7 @@ public class Router {
                 allRouters.get(r).receivePacket(new LSP(this), this.ID);
             }
         }
+        this.sequenceNumber++;
     }
     
     public static void main(String[] args) throws IOException {
